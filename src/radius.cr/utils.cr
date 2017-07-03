@@ -48,6 +48,46 @@ module Radius
       user_pass_bytes.copy_to encrypted_pass[0, user_pass_bytes.size]
 
       (user_pass_bytes...encrypted_pass.size).each { |i| encrypted_pass[i] = 0 }
+
+      shared_secret_bytes = shared_secret.to_slice
+
+      (0...(encrypted_pass.size / 16)).each do |chunk|
+        hash = OpenSSL::MD5.hash shared_secret_bytes
+        (0...16).each do |i|
+          j = i + chunk * 16
+          encrypted_pass[j] = (hash[i] ^ encrypted_pass[j]).to_slice
+        end
+      end
+
+      encrypted_pass
+    end
+
+    def self.to_3bytes(val : UInt32)
+      Bytes.new(3){
+        (val >> 16 & 0xff),
+        (val >>  8 & 0xff),
+        (val       & 0xff)
+      }
+    end
+
+    def self.to_3bytes(val : Int32)
+      Utils.to_3bytes val.to_u32
+    end
+
+    def self.three_bytes_to_uint(bytes, offset)
+      ( bytes[offset + 2] << 16
+      | bytes[offset + 1] << 8
+      | bytes[offset] )
+    end
+
+    def get_network_bytes(value)
+      size = sizeof(typeof(value))
+      result = Bytes.new(size)
+      (0...size).each do |i|
+        result[-i + size - 1] = (value & 0xff)
+        value = (value >> 8)
+      end
+      result
     end
   end
 end
