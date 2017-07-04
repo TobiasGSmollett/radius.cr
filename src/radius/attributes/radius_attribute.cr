@@ -5,6 +5,9 @@ module Radius
 
     ATTRIBUTE_HEADER_SIZE = 2.to_u8
 
+    @type : UInt8
+    @data : Bytes
+
     getter type, length, raw_data
 
     def value

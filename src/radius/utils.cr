@@ -3,12 +3,13 @@ require "openssl"
 module Radius
   class Utils
     def self.accounting_request_authenticator(data, shared_secret)
-      sum = (data.to_a + szhared_secret).to_slice
+      shared_s = shared_secret.to_slice
+      sum = (data.to_s + shared_secret).to_slice
       data.copy_to sum[0, data.size]
       shared_s.copy_to sum[data.size, shared_s.size]
-      data[4,16] = Slice.empty
+      Bytes.empty.copy_to data[4,16]
 
-      OpenSSL::MD5.hash sum, sum.bytesize
+      OpenSSL::MD5.hash(sum.to_s).to_slice
     end
 
     def self.access_request_authenticator(shared_secret)
@@ -19,15 +20,15 @@ module Radius
       (0..15).each { |i| request_authenticator[i] = r.rand.to_u8 }
       shared_s.copy_to request_authenticator[16, shared_s.size]
 
-      OpenSSL::MD5.hash request_authenticator, request_authenticator.bytesize
+      OpenSSL::MD5.hash(request_authenticator.to_unsafe, request_authenticator.bytesize).to_slice
     end
 
-    def self.response_authenticator(data, request_authenticator, shared_secret)
+    def self.response_authenticator(data, request_authenticator : Bytes, shared_secret)
       shared_s = shared_secret.to_slice
       sum = Bytes.new(data.size + shared_s.size)
 
       data.copy_to sum[0, data.size]
-      request_authenticator.copy_to sum[4,16]
+      request_authenticator.copy_to sum[4], 16
       shared_s.copy_to sum[data.size, shared_s.size]
 
       OpenSSL::MD5.hash sum, sum.bytesize

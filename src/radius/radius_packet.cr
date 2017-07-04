@@ -1,3 +1,6 @@
+require "secure_random"
+require "openssl/hmac"
+
 module Radius
   class RadiusPacket
     private RADIUS_CODE_INDEX = 0_u8
@@ -10,7 +13,12 @@ module Radius
     private ATTRIBUTES_INDEX = 20_u8
     private RADIUS_HEADER_LENGTH = ATTRIBUTES_INDEX
 
-    def initialize(@packet_type, @identifier = SecureRandom.random_bytes)
+    @packet_type : UInt8
+    @authenticator : Bytes
+
+    def initialize(packet_type : Radius::RadiusCode, @identifier : UInt8 = SecureRandom.random_bytes.first)
+      @packet_type = packet_type.to_u8
+      @valid = true
       @attributes = Array(RadiusAttribute).new
       @authenticator = Bytes.new(RADIUS_AUTHENTICATOR_FIELD_LENGTH)
 
@@ -24,46 +32,47 @@ module Radius
       length_bytes = Bytes.new(sizeof(UInt16))
       length_bytes[1] = 2_u8
       length_bytes.reverse!
-      length_bytes.copy_to @raw_data[RADIUS_LENGTH_INDEX], sizeof(UInt16)
+      length_bytes.copy_to @raw_data[RADIUS_LENGTH_INDEX, sizeof(UInt16)]
     end
 
-    def initialize(receive_data)
+    def initialize(receive_data : Bytes)
       @attributes = Array(RadiusAttribute).new
       @authenticator = Bytes.new(RADIUS_AUTHENTICATOR_FIELD_LENGTH)
 
       @valid = true
       @raw_data = receive_data
 
-      if(@raw_data.length < 20 || 2096 < @raw_data.length)
+      if(@raw_data.size < 20 || 2096 < @raw_data.size)
         @valid = false
       else
         @packet_type = @raw_data[RADIUS_CODE_INDEX]
         @identifier = @raw_data[RADIUS_IDENTIFIER_INDEX]
         @length = ((@raw_data[2] << 8) + @raw_data[3]).to_u8
 
-        if @length > @raw_data.length
+        if @length > @raw_data.size
           @valid = false
         else
-          @raw_data.copy_to @authenticator, 0, RADIUS_AUTHENTICATOR_FIELD_LENGTH
+          @authenticator.copy_from @raw_data.to_unsafe, RADIUS_AUTHENTICATOR_FIELD_LENGTH
 
           attributes_array = Bytes.new(@length - ATTRIBUTES_INDEX)
-          attributes_array.copy_from receive_data[ATTRIBUTES_INDEX, attributes_array.length]
+          attributes_array.copy_from receive_data[ATTRIBUTES_INDEX, attributes_array.size]
           parse_attributes attributes_array
         end
       end
     end
 
     def authenticator=(shared_secret, request_authenticator = nil)
-      case packet_type
+      req = request_authenticator
+      case @packet_type
       when RadiusCode::ACCESS_REQUEST
         @authenticator = Utils.access_request_authenticator shared_secret
       when RadiusCode::ACCESS_ACCEPT
-        @authenticator = Utils.response_authenticator @raw_data, request_authenticator, shared_secret
+        @authenticator = Utils.response_authenticator @raw_data, req, shared_secret if !req.nil?
       when RadiusCode::ACCESS_REJECT
       when RadiusCode::ACCOUNTING_REQUEST
         @authenticator = Utils.accounting_request_authenticator @raw_data, shared_secret
       when RadiusCode::ACCOUNTING_RESPONSE
-        @authenticator = Utils.response_authenticator @raw_data, request_authenticator, shared_secret
+        @authenticator = Utils.response_authenticator @raw_data, req, shared_secret if !req.nil?
       when RadiusCode::ACCOUNTING_STATUS
       when RadiusCode::PASSWORD_REQUEST,
            RadiusCode::PASSWORD_ACCEPT,
@@ -103,7 +112,7 @@ module Radius
     end
 
     def message_authenticator=(shared_secret)
-      new_raw_data = Bytes.new(@raw_data.length + RADIUS_MESSAGE_AUTHENTICATOR_LENGTH)
+      new_raw_data = Bytes.new(@raw_data.size + RADIUS_MESSAGE_AUTHENTICATOR_LENGTH)
       new_raw_data = @raw_data
 
       tmp = Bytes.new(sizeof(UInt16))
@@ -111,19 +120,19 @@ module Radius
       tmp.reverse!
       tmp.copy_to new_raw_data[RADIUS_LENGTH_INDEX, sizeof(UInt16)]
 
-      new_raw_data[@raw_data.length] = AttributeType::MESSAGE_AUTHENTICATOR
-      new_raw_data[@raw_data.length + 1] = RADIUS_MESSAGE_AUTHENTICATOR_LENGTH
+      new_raw_data[@raw_data.size] = AttributeType::MESSAGE_AUTHENTICATOR.value.to_u8
+      new_raw_data[@raw_data.size + 1] = RADIUS_MESSAGE_AUTHENTICATOR_LENGTH
 
       hash = OpenSSL::HMAC.digest(:md5,shared_secret,new_raw_data)
-      hash.copy_to new_raw_data[new_raw_data.length - RADIUS_MESSAGE_AUTH_HASH_LENGTH, hash.length]
-      @rawdata = new_raw_data
+      hash.copy_to new_raw_data[new_raw_data.size - RADIUS_MESSAGE_AUTH_HASH_LENGTH, hash.size]
+      @raw_data = new_raw_data
       @length += RADIUS_MESSAGE_AUTHENTICATOR_LENGTH
     end
 
     private def parse_attributes(attribute_byte_array)
       current_attribute_offset = 0
 
-      while current_attribute_offset < attribute_byte_array.length
+      while current_attribute_offset < attribute_byte_array.size
         type = attribute_byte_array[current_attribute_offset]
         length = attribute_byte_array[current_attribute_offset + 1]
 

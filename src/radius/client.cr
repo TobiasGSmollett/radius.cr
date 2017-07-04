@@ -3,18 +3,15 @@ require "socket"
 module Radius
   class Client
     private DEFAULT_RETRIES = 3
-    private DEFAULT_AUTH_PORT = 1812_u32
-    private DEFAULT_ACCT_PORT = 1813_u32
+    private DEFAULT_AUTH_PORT = 1812
+    private DEFAULT_ACCT_PORT = 1813
     private DEFAULT_SOCKET_TIMEOUT = 3000
 
-    private getter host_name
-    private getter shared_secret
-
-    private getter host_name
-    private getter shared_secret
-    private getter sock_timeout
-    private getter auth_port
-    private getter acct_port
+    private getter host_name : String
+    private getter shared_secret : String
+    private getter sock_timeout : Int32
+    private getter auth_port : Int32
+    private getter acct_port : Int32
 
     def initialize(
       @host_name,
@@ -36,12 +33,12 @@ module Radius
 
     def send_and_receive_packet(packet, retries = DEFAULT_RETRIES)
       udp_socket = UDPSocket.new
-      udp.socket.read_timeout = sock_timeout
+      udp_socket.read_timeout = sock_timeout
       host_ip = nil
 
       begin
-        udp_socket.bind local_end_point, auth_port.to_i32 if !local_end_point.nil?
         host_ip = Socket::IPAddress.new(host_name, auth_port.to_i32)
+        udp_socket.bind host_name, auth_port.to_i32
 
         raise Exception.new "Resulving " + host_name + " returned no hists in DNS" if host_ip.nil?
       end
@@ -50,9 +47,9 @@ module Radius
 
       while number_of_attempts < retries
         begin
-          udp_socket.send packet.raw_data
+          udp_socket.send packet.@raw_data
           message, addr = udp_socket.receive
-          received_packet = RadiusPacket.new message
+          received_packet = RadiusPacket.new message.to_slice
           return received_packet if received_packet.valid
         ensure
           udp_socket.close
@@ -67,7 +64,7 @@ module Radius
 
       channel = Channel(String).new
       spawn do
-        result = send_and_receive_packet auth_packet, 0
+        result = send_and_receive_packet auth_packet, 1
         channel.send result
       end
       channel.receive

@@ -1,18 +1,18 @@
 require "./spec_helper"
-require "mocks"
 
 Mocks.create_mock Radius::Client do
-  mock send_and_receive_packet(packet)
+  mock send_and_receive_packet(packet, retries = 3)
 end
 
 describe Radius::Client do
   before { Mocks.reset }
 
   it "ping" do
-    client_mock = Radius::Client.new "127.0.0.1", 8080
+    client_mock = Radius::Client.new "localhost", "aaa"
+    input = Radius::RadiusPacket.new(Radius::RadiusCode::SERVER_STATUS, 1_u8)
 
     allow(client_mock)
-      .to receive(send_and_receive_packet(RadiusPacket.new(RadiusCode::SERVER_STATUS)))
+      .to receive(send_and_receive_packet(input))
       .and_return("aaa")
 
     true.should eq (client_mock.ping == "aaa")
