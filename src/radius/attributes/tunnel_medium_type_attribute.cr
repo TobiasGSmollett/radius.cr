@@ -10,9 +10,9 @@ module Radius
     getter tunnel_medium_type
 
     def initialize(@tag, @tunnel_medium_type)
-      super Radius::AttributeType.TUNNEL_TYPE
+      super AttributeType::TUNNEL_TYPE
 
-      @data = Utils.IntTo3Byte(@tunnel_medium_type.to_i32)
+      @data = Utils.to_3bytes(@tunnel_medium_type.to_i32)
 
       @length = TUNNEL_TYPE_LENGTH
       @raw_data = Bytes.new(@length)

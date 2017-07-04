@@ -63,11 +63,7 @@ module Radius
     end
 
     def self.to_3bytes(val : UInt32)
-      Bytes.new(3){
-        (val >> 16 & 0xff),
-        (val >>  8 & 0xff),
-        (val       & 0xff)
-      }
+      Bytes.new(3){ |i| (val >> (8 * i) & 0xff) }
     end
 
     def self.to_3bytes(val : Int32)
@@ -75,9 +71,7 @@ module Radius
     end
 
     def self.three_bytes_to_uint(bytes, offset)
-      ( bytes[offset + 2] << 16
-      | bytes[offset + 1] << 8
-      | bytes[offset] )
+      ( bytes[offset + 2] << 16 | bytes[offset + 1] << 8 | bytes[offset] )
     end
 
     def get_network_bytes(value)

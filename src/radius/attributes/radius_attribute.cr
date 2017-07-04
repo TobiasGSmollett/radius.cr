@@ -3,7 +3,7 @@ module Radius
 
   class RadiusAttribute
 
-    protected ATTRIBUTE_HEADER_SIZE = 2.to_u8
+    ATTRIBUTE_HEADER_SIZE = 2.to_u8
 
     getter type, length, raw_data
 
@@ -15,10 +15,9 @@ module Radius
            AttributeType::FRAMED_IP_NETMASK,
            AttributeType::LOGIN_IP_HOST,
            AttributeType::LOGIN_IPV6_HOST
-
+        Socket::IPAddress.new(@data, @length).to_s
       when AttributeType::FRAMED_PROTOCOL,
            AttributeType::FRAMED_IPV6_PREFIX
-
       when AttributeType::FRAMED_ROUTING
 
       when AttributeType::SERVICE_TYPE
@@ -41,9 +40,6 @@ module Radius
       else
 
       end
-    end
-
-    def initialize(@type)
     end
 
     def initialize(@type, @data)

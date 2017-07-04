@@ -55,26 +55,26 @@ module Radius
 
     def authenticator=(shared_secret, request_authenticator = nil)
       case packet_type
-      when RadiusCode.ACCESS_REQUEST
+      when RadiusCode::ACCESS_REQUEST
         @authenticator = Utils.access_request_authenticator shared_secret
-      when RadiusCode.ACCESS_ACCEPT
+      when RadiusCode::ACCESS_ACCEPT
         @authenticator = Utils.response_authenticator @raw_data, request_authenticator, shared_secret
-      when RadiusCode.ACCESS_REJECT
-      when RadiusCode.ACCOUNTING_REQUEST
+      when RadiusCode::ACCESS_REJECT
+      when RadiusCode::ACCOUNTING_REQUEST
         @authenticator = Utils.accounting_request_authenticator @raw_data, shared_secret
-      when RadiusCode.ACCOUNTING_RESPONSE
+      when RadiusCode::ACCOUNTING_RESPONSE
         @authenticator = Utils.response_authenticator @raw_data, request_authenticator, shared_secret
-      when RadiusCode.ACCOUNTING_STATUS
-      when RadiusCode.PASSWORD_REQUEST,
-           RadiusCode.PASSWORD_ACCEPT,
-           RadiusCode.PASSWORD_REJECT,
-           RadiusCode.ACCOUNTING_MESSAGE,
-           RadiusCode.ACCESS_CHALLENGE
-      when RadiusCode.SERVER_STATUS
+      when RadiusCode::ACCOUNTING_STATUS
+      when RadiusCode::PASSWORD_REQUEST,
+           RadiusCode::PASSWORD_ACCEPT,
+           RadiusCode::PASSWORD_REJECT,
+           RadiusCode::ACCOUNTING_MESSAGE,
+           RadiusCode::ACCESS_CHALLENGE
+      when RadiusCode::SERVER_STATUS
         @authenticator = Utils.access_request_authenticator shared_secret
-      when RadiusCode.COA_REQUEST
+      when RadiusCode::COA_REQUEST
         @authenticator = Utils.accounting_request_authenticator @raw_data, shared_secret
-      when RadiusCode.DISCONNECT_REQUEST
+      when RadiusCode::DISCONNECT_REQUEST
         @authenticator = Utils.accounting_request_authenticator @raw_data, shared_secret
       else
         raise Exception.new "argument out of range"
@@ -111,7 +111,7 @@ module Radius
       tmp.reverse!
       tmp.copy_to new_raw_data[RADIUS_LENGTH_INDEX, sizeof(UInt16)]
 
-      new_raw_data[@raw_data.length] = AttributeType.MESSAGE_AUTHENTICATOR
+      new_raw_data[@raw_data.length] = AttributeType::MESSAGE_AUTHENTICATOR
       new_raw_data[@raw_data.length + 1] = RADIUS_MESSAGE_AUTHENTICATOR_LENGTH
 
       hash = OpenSSL::HMAC.digest(:md5,shared_secret,new_raw_data)
@@ -136,7 +136,7 @@ module Radius
         data.copy_from attribute_byte_array[current_attribute_offset + 2, length - 2]
 
         @attributes <<
-          if type == AttributeType.VENDOR_SPECIFIC
+          if type == AttributeType::VENDOR_SPECIFIC
             VendorSpecificAttribute.new(attribute_byte_array, current_attribute_offset)
           else
             RadiusAttribute.new(type, data)

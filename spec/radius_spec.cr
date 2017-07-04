@@ -1,6 +1,6 @@
 require "./spec_helper"
 
-describe Radius.cr do
+describe Radius do
   # TODO: Write tests
 
   it "works" do

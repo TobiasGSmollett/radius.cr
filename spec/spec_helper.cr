@@ -1,2 +1,5 @@
 require "spec"
-require "../src/radius.cr"
+require "spec2"
+require "../src/radius"
+
+include Spec2::GlobalDSL
