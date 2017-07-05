@@ -40,7 +40,7 @@ module Radius
         host_ip = Socket::IPAddress.new(host_name, auth_port.to_i32)
         udp_socket.bind host_name, auth_port.to_i32
 
-        raise Exception.new "Resulving " + host_name + " returned no hists in DNS" if host_ip.nil?
+        raise Exception.new "Resolving " + host_name + " returned no hists in DNS" if host_ip.nil?
       end
 
       number_of_attempts = 0
@@ -50,7 +50,7 @@ module Radius
           udp_socket.send packet.@raw_data
           message, addr = udp_socket.receive
           received_packet = RadiusPacket.new message.to_slice
-          return received_packet if received_packet.valid
+          return received_packet if received_packet.@valid
         ensure
           udp_socket.close
         end
@@ -65,7 +65,7 @@ module Radius
       channel = Channel(String).new
       spawn do
         result = send_and_receive_packet auth_packet, 1
-        channel.send result
+        channel.send result.to_s
       end
       channel.receive
     end

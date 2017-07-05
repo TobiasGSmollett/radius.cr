@@ -39,6 +39,9 @@ module Radius
       @attributes = Array(RadiusAttribute).new
       @authenticator = Bytes.new(RADIUS_AUTHENTICATOR_FIELD_LENGTH)
 
+      @packet_type = 0_u8
+      @identifier = 0_u8
+      @length = 0_u8
       @valid = true
       @raw_data = receive_data
 
@@ -133,7 +136,7 @@ module Radius
       current_attribute_offset = 0
 
       while current_attribute_offset < attribute_byte_array.size
-        type = attribute_byte_array[current_attribute_offset]
+        type = AttributeType.new attribute_byte_array[current_attribute_offset].to_i32
         length = attribute_byte_array[current_attribute_offset + 1]
 
         if length < 2 || current_attribute_offset + length > @length
